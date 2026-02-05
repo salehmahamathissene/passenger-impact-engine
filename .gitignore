@@ -22,3 +22,13 @@ Thumbs.db
 
 # Docker
 *.env
+
+# Local outputs
+out/
+out_ci/
+out_docker/
+test_output/
+test_output_ci/
+
+# Local docker/dev
+.dockerignore
