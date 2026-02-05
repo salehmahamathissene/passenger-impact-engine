@@ -34,13 +34,48 @@ jobs:
       - name: Build image
         run: docker build -t passenger-impact-engine:ci .
 
-      - name: Run simulation in container
+      - name: Docker smoke pipeline (simulate → merge → stats → dashboard)
+        env:
+          MPLCONFIGDIR: /tmp/matplotlib
         run: |
+          rm -rf out
           mkdir -p out
-          docker run --rm -v "$PWD/out:/app/out" passenger-impact-engine:ci simulate --config configs/demo.yml --out out
-          test -s out/summary.csv
-          test -s out/cost_distribution.csv
-          test -s out/events.jsonl
-          test -s out/report.html
-          test -s out/entitlements.csv
-          echo "✅ Container produced all artifacts"
+
+          # 1) simulate (with ledger audit so merge-ledger works)
+          docker run --rm \
+            -e MPLCONFIGDIR=/tmp/matplotlib \
+            -v "$PWD/out:/out" \
+            passenger-impact-engine:ci \
+            simulate --config configs/demo.yml --out /out --audit ledger
+
+          # 2) merge-ledger => entitlements.csv.gz
+          docker run --rm \
+            -e MPLCONFIGDIR=/tmp/matplotlib \
+            -v "$PWD/out:/out" \
+            passenger-impact-engine:ci \
+            merge-ledger --out /out
+
+          # 3) stats
+          docker run --rm \
+            -e MPLCONFIGDIR=/tmp/matplotlib \
+            -v "$PWD/out:/out" \
+            passenger-impact-engine:ci \
+            stats --out /out --top 5 --by segment,dtype --metric p95 --min-cost 200 --sample-size 500
+
+          # 4) dashboard
+          docker run --rm \
+            -e MPLCONFIGDIR=/tmp/matplotlib \
+            -v "$PWD/out:/out" \
+            passenger-impact-engine:ci \
+            dashboard --out /out --top 5
+
+          # ✅ Assertions: check the files your CURRENT pipeline actually produces
+          test -s out/run.json
+          test -s out/ledger_index.json
+          test -s out/entitlements.csv.gz
+          test -s out/stats.json
+          test -s out/stats_groups.csv
+          test -s out/stats_top_passengers.csv
+          test -s out/dashboard/index.html
+
+          echo "✅ Docker pipeline produced all expected artifacts"
