@@ -3,61 +3,51 @@ set -euo pipefail
 
 echo "🧪 Starting Docker CI smoke test..."
 
-# Use a temporary directory that Docker can write to
-TEST_DIR="${TEST_OUTPUT:-$(mktemp -d)}"
-echo "Test directory: $TEST_DIR"
-
-# Function to cleanup
-cleanup() {
-    echo "Cleaning up..."
-    docker run --rm -v "$TEST_DIR:/cleanup" alpine sh -c "rm -rf /cleanup/*" 2>/dev/null || true
-    if [[ -z "${TEST_OUTPUT:-}" ]]; then
-        rm -rf "$TEST_DIR"
-    fi
-}
-trap cleanup EXIT
+# Create test directory
+TEST_DIR="test_output_ci"
+rm -rf "$TEST_DIR"
+mkdir -p "$TEST_DIR"
 
 echo "1. Building Docker image..."
 docker build -t pie:ci .
 
-echo "2. Testing simulation pipeline..."
-docker run --rm \
-  -u "$(id -u):$(id -g)" \
-  -v "$TEST_DIR:/out" \
-  pie:ci simulate \
-  --config configs/demo.yml \
-  --out /out \
-  --audit ledger
+echo "2. Running pipeline in container..."
 
+# Run all commands in one container session
 docker run --rm \
-  -u "$(id -u):$(id -g)" \
-  -v "$TEST_DIR:/out" \
-  pie:ci merge-ledger --out /out
+  -v "$PWD/$TEST_DIR:/test_out" \
+  pie:ci \
+  bash -c "
+    set -e
+    echo '=== Running simulation ==='
+    pie simulate --config configs/demo.yml --out /test_out --audit ledger --ledger-mode topk --ledger-topk 10 --ledger-chunk-size 100
+    
+    echo '=== Merging ledger ==='
+    pie merge-ledger --out /test_out
+    
+    echo '=== Generating statistics ==='
+    pie stats --out /test_out --top 5 --by segment,dtype --metric p95 --min-cost 200 --sample-size 500
+    
+    echo '=== Creating dashboard ==='
+    pie dashboard --out /test_out --top 5
+    
+    echo '=== Verifying output ==='
+    if [[ -f /test_out/dashboard/index.html ]]; then
+      echo '✅ Pipeline completed successfully'
+      exit 0
+    else
+      echo '❌ Dashboard not found'
+      exit 1
+    fi
+  "
 
-docker run --rm \
-  -u "$(id -u):$(id -g)" \
-  -v "$TEST_DIR:/out" \
-  pie:ci stats \
-  --out /out \
-  --top 5 \
-  --by segment,dtype \
-  --metric p95 \
-  --min-cost 200 \
-  --sample-size 500
-
-docker run --rm \
-  -u "$(id -u):$(id -g)" \
-  -v "$TEST_DIR:/out" \
-  pie:ci dashboard --out /out --top 5
-
-echo "3. Verifying output..."
-if docker run --rm -v "$TEST_DIR:/check" alpine sh -c "ls -la /check/dashboard/index.html" >/dev/null 2>&1; then
-    echo "✅ Dashboard generated successfully"
-    echo "📊 Files created:"
-    docker run --rm -v "$TEST_DIR:/list" alpine find /list -type f | wc -l | xargs echo "   Total files:"
+# Check result
+if [[ $? -eq 0 ]] && [[ -f "$TEST_DIR/dashboard/index.html" ]]; then
+    echo "✅ Docker CI smoke test PASSED!"
+    echo "📊 Files generated in $TEST_DIR/:"
+    ls -la "$TEST_DIR/dashboard/"
+    exit 0
 else
-    echo "❌ ERROR: Dashboard not created"
+    echo "❌ Docker CI smoke test FAILED!"
     exit 1
 fi
-
-echo "🎉 Docker CI smoke test PASSED!"
