@@ -20,7 +20,7 @@ Open in browser:
 ```bash
 curl -s http://localhost:8010/ | grep -o '<title>[^<]*</title>'
 docker-compose -f deploy/docker-compose.yml ps
-docker-compose -f deploy/docker-compose.yml logs --tail=30 pie-worker
+docker logs --tail 30 --timestamps pie-worker
 ```
 
 Expected:
