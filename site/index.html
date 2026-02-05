@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>PIE Dashboard</title>
+<style>
+  :root {
+    --bg: #0b0f17;
+    --card: #121a27;
+    --text: #e8eefc;
+    --muted: #a9b4cc;
+    --line: rgba(255,255,255,.08);
+    --accent: #6aa6ff;
+  }
+  body {
+    margin: 0;
+    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+    background: var(--bg);
+    color: var(--text);
+  }
+  .wrap {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 28px 18px 60px;
+  }
+  h1 {
+    font-size: 28px;
+    margin: 0 0 6px;
+  }
+  .sub {
+    color: var(--muted);
+    margin-bottom: 22px;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 14px;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 14px;
+  }
+  .span-12 { grid-column: span 12; }
+  .span-6 { grid-column: span 6; }
+  .span-4 { grid-column: span 4; }
+  .span-8 { grid-column: span 8; }
+  .kpi {
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .kpi strong {
+    display: block;
+    font-size: 22px;
+    color: var(--text);
+    margin-top: 4px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  th, td {
+    text-align: left;
+    padding: 10px 8px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+  th {
+    color: var(--muted);
+    font-weight: 600;
+  }
+  .pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(106,166,255,.12);
+    color: var(--accent);
+    border: 1px solid rgba(106,166,255,.25);
+    font-size: 12px;
+  }
+  img {
+    max-width: 100%;
+    border-radius: 10px;
+    border: 1px solid var(--line);
+  }
+  .muted {
+    color: var(--muted);
+  }
+  .footer {
+    margin-top: 18px;
+    color: var(--muted);
+    font-size: 12px;
+  }
+  @media (max-width: 900px) {
+    .span-6, .span-4, .span-8 { grid-column: span 12; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Passenger Impact Engine — Dashboard</h1>
+<div class="sub">
+  Run: <span class="pill">5225b01d5e8790e9</span>
+  &nbsp;&nbsp; Grouping: <span class="pill">segment,dtype</span>
+  &nbsp;&nbsp; Metric: <span class="pill">p95</span>
+</div>
+
+<div class="grid">
+  <div class="card span-4"><div class="kpi">Mean total cost (EUR)<strong>—</strong></div></div>
+  <div class="card span-4"><div class="kpi">P95 total cost (EUR)<strong>—</strong></div></div>
+  <div class="card span-4"><div class="kpi">CVaR95 total cost (EUR)<strong>—</strong></div></div>
+
+  <div class="card span-12">
+    <h3 style="margin:0 0 10px;">Charts</h3>
+    <div class="grid">
+      <div class="span-6"><img src='assets/mean_by_group.png' alt='Mean cost by group'/></div>
+      <div class="span-6"><img src='assets/p95_by_group.png' alt='P95 cost by group'/></div>
+      <div class="span-12"><img src='assets/top_passengers.png' alt='Top passengers by score'/></div>
+      <div class="span-12"><img src='assets/components.png' alt='Cost components (sum)'/></div>
+    </div>
+  </div>
+
+  <div class="card span-12">
+    <h3 style="margin:0 0 10px;">Group statistics</h3>
+    <div class="muted" style="margin-bottom:10px;">Source: stats_groups.csv</div>
+    <table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>group</th>
+      <th>rows</th>
+      <th>mean_total_cost_eur</th>
+      <th>sum_total_cost_eur</th>
+      <th>min_total_cost_eur</th>
+      <th>max_total_cost_eur</th>
+      <th>p50_total_cost_eur</th>
+      <th>p95_total_cost_eur</th>
+      <th>p99_total_cost_eur</th>
+      <th>sum_cash_comp_eur</th>
+      <th>sum_care_cost_eur</th>
+      <th>sum_refund_cost_eur</th>
+      <th>sum_rebooking_cost_eur</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>segment=business|dtype=delay</td>
+      <td>14210.0</td>
+      <td>1498.334379</td>
+      <td>21291331.52</td>
+      <td>1060.86</td>
+      <td>1975.42</td>
+      <td>1580.575</td>
+      <td>1820.170</td>
+      <td>1871.8354</td>
+      <td>3328000.0</td>
+      <td>574250.0</td>
+      <td>15696820.72</td>
+      <td>1692260.8</td>
+    </tr>
+    <tr>
+      <td>segment=business|dtype=cancel</td>
+      <td>5790.0</td>
+      <td>1754.112000</td>
+      <td>10156308.48</td>
+      <td>1574.93</td>
+      <td>1982.82</td>
+      <td>1751.985</td>
+      <td>1874.388</td>
+      <td>1910.1027</td>
+      <td>2316000.0</td>
+      <td>752700.0</td>
+      <td>6395819.28</td>
+      <td>691789.2</td>
+    </tr>
+  </tbody>
+</table>
+  </div>
+
+  <div class="card span-12">
+    <h3 style="margin:0 0 10px;">Top passengers</h3>
+    <div class="muted" style="margin-bottom:10px;">Source: stats_top_passengers.csv</div>
+    <table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>passenger_id</th>
+      <th>rows</th>
+      <th>mean_total_cost_eur</th>
+      <th>sum_total_cost_eur</th>
+      <th>max_total_cost_eur</th>
+      <th>p50_total_cost_eur</th>
+      <th>p95_total_cost_eur</th>
+      <th>p99_total_cost_eur</th>
+      <th>score</th>
+      <th>metric</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>P00574</td>
+      <td>2000.0</td>
+      <td>1661.63</td>
+      <td>3323260.0</td>
+      <td>1982.82</td>
+      <td>1758.46</td>
+      <td>1896.189</td>
+      <td>1930.4251</td>
+      <td>1896.189</td>
+      <td>p95</td>
+    </tr>
+    <tr>
+      <td>P00453</td>
+      <td>2000.0</td>
+      <td>1633.62</td>
+      <td>3267240.0</td>
+      <td>1954.81</td>
+      <td>1730.45</td>
+      <td>1868.179</td>
+      <td>1902.4151</td>
+      <td>1868.179</td>
+      <td>p95</td>
+    </tr>
+    <tr>
+      <td>P00336</td>
+      <td>2000.0</td>
+      <td>1626.38</td>
+      <td>3252760.0</td>
+      <td>1947.57</td>
+      <td>1723.21</td>
+      <td>1860.939</td>
+      <td>1895.1751</td>
+      <td>1860.939</td>
+      <td>p95</td>
+    </tr>
+    <tr>
+      <td>P00495</td>
+      <td>2000.0</td>
+      <td>1619.44</td>
+      <td>3238880.0</td>
+      <td>1940.63</td>
+      <td>1716.27</td>
+      <td>1853.999</td>
+      <td>1888.2351</td>
+      <td>1853.999</td>
+      <td>p95</td>
+    </tr>
+    <tr>
+      <td>P00274</td>
+      <td>2000.0</td>
+      <td>1585.21</td>
+      <td>3170420.0</td>
+      <td>1906.40</td>
+      <td>1682.04</td>
+      <td>1819.769</td>
+      <td>1854.0051</td>
+      <td>1819.769</td>
+      <td>p95</td>
+    </tr>
+    <tr>
+      <td>P00120</td>
+      <td>2000.0</td>
+      <td>1527.27</td>
+      <td>3054540.0</td>
+      <td>1848.46</td>
+      <td>1624.10</td>
+      <td>1761.829</td>
+      <td>1796.0651</td>
+      <td>1761.829</td>
+      <td>p95</td>
+    </tr>
+    <tr>
+      <td>P00298</td>
+      <td>2000.0</td>
+      <td>1527.01</td>
+      <td>3054020.0</td>
+      <td>1848.20</td>
+      <td>1623.84</td>
+      <td>1761.569</td>
+      <td>1795.8051</td>
+      <td>1761.569</td>
+      <td>p95</td>
+    </tr>
+    <tr>
+      <td>P00069</td>
+      <td>2000.0</td>
+      <td>1517.92</td>
+      <td>3035840.0</td>
+      <td>1839.11</td>
+      <td>1614.75</td>
+      <td>1752.479</td>
+      <td>1786.7151</td>
+      <td>1752.479</td>
+      <td>p95</td>
+    </tr>
+    <tr>
+      <td>P00477</td>
+      <td>2000.0</td>
+      <td>1514.89</td>
+      <td>3029780.0</td>
+      <td>1836.08</td>
+      <td>1611.72</td>
+      <td>1749.449</td>
+      <td>1783.6851</td>
+      <td>1749.449</td>
+      <td>p95</td>
+    </tr>
+    <tr>
+      <td>P00442</td>
+      <td>2000.0</td>
+      <td>1510.45</td>
+      <td>3020900.0</td>
+      <td>1831.64</td>
+      <td>1607.28</td>
+      <td>1745.009</td>
+      <td>1779.2451</td>
+      <td>1745.009</td>
+      <td>p95</td>
+    </tr>
+  </tbody>
+</table>
+  </div>
+</div>
+
+<div class="footer">Generated by Passenger Impact Engine — dashboard</div>
+</div>
+</body>
+</html>

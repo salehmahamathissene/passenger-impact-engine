@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Lint
+        run: ruff check .
+
+      - name: Test
+        run: pytest -q
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build image
+        run: docker build -t passenger-impact-engine:ci .
+
+      - name: Run simulation in container
+        run: |
+          mkdir -p out
+          docker run --rm -v "$PWD/out:/app/out" passenger-impact-engine:ci simulate --config configs/demo.yml --out out
+          test -s out/summary.csv
+          test -s out/cost_distribution.csv
+          test -s out/events.jsonl
+          test -s out/report.html
+          test -s out/entitlements.csv
+          echo "✅ Container produced all artifacts"

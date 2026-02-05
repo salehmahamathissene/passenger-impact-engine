@@ -1,0 +1,34 @@
+run:
+  seed: 1337
+  iterations: 2000
+
+population:
+  passengers: 600
+  segments:
+    business: 0.35
+    leisure: 0.65
+
+scenario:
+  region: EU261
+  distance_km: 1800
+  carrier_is_eu: true
+  dep_in_eu: true
+  arr_in_eu: true
+
+  disruption_mix:
+    delay: 0.70
+    cancel: 0.30
+
+  delay_minutes:
+    mean: 190
+    std: 60
+    min: 0
+    max: 800
+
+costs:
+  meal_cost: 15
+  hotel_cost_per_night: 90
+  ground_transport_cost: 25
+  rebooking_cost_mean: 120
+  rebooking_cost_std: 45
+  refund_rate: 0.15
