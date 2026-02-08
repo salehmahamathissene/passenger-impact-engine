@@ -1,0 +1,18 @@
+from pie.cli.main import simulate_cmd, merge_ledger_cmd, stats_cmd, dashboard_cmd
+
+def run_full_pipeline(config_path: str, out_dir: str, audit="ledger"):
+
+    simulate_cmd(config=config_path, out=out_dir, audit=audit)
+
+    merge_ledger_cmd(out=out_dir)
+
+    stats_cmd(
+        out=out_dir,
+        top=10,
+        by="segment,dtype",
+        metric="p95",
+        min_cost=200,
+        sample_size=500
+    )
+
+    dashboard_cmd(out=out_dir, top=10)

@@ -1,0 +1,570 @@
+from __future__ import annotations
+from dataclasses import fields
+
+from pathlib import Path
+import zipfile
+from pie.pro.pdf_report import ExecutiveReport, render_executive_report_pdf
+from pie.pro.pdf_invoice import InvoicePDFData, ReceiptPDFData, render_invoice_pdf, render_receipt_pdf
+
+import hashlib
+import hmac
+import secrets
+import uuid
+from datetime import datetime, timedelta
+from decimal import Decimal
+from typing import Optional
+
+from fastapi import APIRouter, HTTPException, Depends, Header, status
+from fastapi.responses import FileResponse
+from pydantic import BaseModel, EmailStr, Field
+from sqlalchemy.orm import Session
+from sqlalchemy import desc
+
+from .settings import settings
+from .db import get_db
+from .enterprise_models import (
+    EnterpriseCompany, EnterpriseContract, EnterpriseInvoice, EnterpriseOrder, EnterpriseJob,
+    CompanyTier, IndustryType, ContractStatus, InvoiceStatus, JobStatus
+)
+from .queue import enqueue_enterprise_job
+
+router = APIRouter(prefix="/enterprise", tags=["enterprise"])
+
+
+# ------------------ Security ------------------
+def _hash_key(raw: str) -> str:
+    # stable hash (store in DB). In real life: use bcrypt/argon2.
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def require_admin(x_admin_key: str = Header(default="", alias="X-Admin-Key")) -> str:
+    expected = (settings.ENTERPRISE_ADMIN_KEY or "").strip()
+    if not expected:
+        raise HTTPException(status_code=500, detail="ENTERPRISE_ADMIN_KEY not set")
+    if not hmac.compare_digest(x_admin_key.strip(), expected):
+        raise HTTPException(status_code=401, detail="Invalid admin key")
+    return x_admin_key
+
+
+def require_company(company_id: str = Header(default="", alias="X-Company-Id"),
+                    x_api_key: str = Header(default="", alias="X-Api-Key"),
+                    db: Session = Depends(get_db)) -> EnterpriseCompany:
+    try:
+        cid = uuid.UUID(company_id.strip())
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid X-Company-Id")
+
+    c = db.get(EnterpriseCompany, cid)
+    if not c or not c.is_active:
+        raise HTTPException(status_code=401, detail="Company not found or inactive")
+
+    if not c.api_key_hash:
+        raise HTTPException(status_code=401, detail="Company API key not provisioned")
+
+    if not hmac.compare_digest(_hash_key(x_api_key.strip()), c.api_key_hash):
+        raise HTTPException(status_code=401, detail="Invalid API key")
+    return c
+
+
+# ------------------ Schemas ------------------
+class CompanyCreate(BaseModel):
+    legal_name: str = Field(..., min_length=2, max_length=200)
+    trading_name: Optional[str] = Field(None, max_length=200)
+    tier: CompanyTier = CompanyTier.small
+    industry: IndustryType = IndustryType.airline
+    country: Optional[str] = Field(None, max_length=100)
+    support_email: Optional[EmailStr] = None
+
+
+class ContractCreate(BaseModel):
+    monthly_allowance_runs: int = Field(100000, ge=1000, le=10_000_000)
+    max_concurrent_jobs: int = Field(5, ge=1, le=200)
+    monthly_fee_eur: Decimal = Field(Decimal("0.00"), ge=0)
+    currency: str = Field("EUR", min_length=3, max_length=3)
+
+
+class InvoiceCreate(BaseModel):
+    company_id: uuid.UUID
+    subtotal_eur: Decimal = Field(..., gt=0)
+    tax_eur: Decimal = Field(Decimal("0.00"), ge=0)
+    due_days: int = Field(30, ge=1, le=120)
+    notes: Optional[str] = None
+
+
+class OrderCreate(BaseModel):
+    description: str = Field(..., min_length=5, max_length=500)
+    iterations: int = Field(..., gt=0, le=1_000_000)
+    amount: Decimal = Field(..., gt=0)
+    currency: str = Field("EUR", min_length=3, max_length=3)
+
+
+class InvoiceSettle(BaseModel):
+    payment_reference: str = Field(..., min_length=3, max_length=200)
+
+
+class InvoicePay(BaseModel):
+    payment_reference: str = Field(..., min_length=3, max_length=200)
+
+
+# ------------------ Endpoints ------------------
+@router.get("/health")
+def health(db: Session = Depends(get_db), _admin: str = Depends(require_admin)):
+    # Admin-only health (enterprise surface)
+    companies = db.query(EnterpriseCompany).count()
+    invoices = db.query(EnterpriseInvoice).count()
+    orders = db.query(EnterpriseOrder).count()
+    return {
+        "status": "healthy",
+        "database": "connected",
+        "entities": {"companies": companies, "invoices": invoices, "orders": orders},
+        "timestamp": datetime.utcnow().isoformat(),
+    }
+
+
+@router.post("/companies")
+def create_company(payload: CompanyCreate, db: Session = Depends(get_db), _admin: str = Depends(require_admin)):
+    exists = db.query(EnterpriseCompany).filter(EnterpriseCompany.legal_name == payload.legal_name).first()
+    if exists:
+        raise HTTPException(status_code=409, detail="Company already exists")
+
+    c = EnterpriseCompany(
+        legal_name=payload.legal_name,
+        trading_name=payload.trading_name,
+        tier=payload.tier,
+        industry=payload.industry,
+        country=payload.country,
+        support_email=str(payload.support_email) if payload.support_email else None,
+    )
+    db.add(c)
+    db.commit()
+    db.refresh(c)
+    return {"company_id": str(c.id), "legal_name": c.legal_name}
+
+
+@router.post("/companies/{company_id}/provision-api-key")
+def provision_company_key(company_id: uuid.UUID, db: Session = Depends(get_db), _admin: str = Depends(require_admin)):
+    c = db.get(EnterpriseCompany, company_id)
+    if not c:
+        raise HTTPException(status_code=404, detail="Company not found")
+    raw = secrets.token_urlsafe(48)
+    c.api_key_hash = _hash_key(raw)
+    c.updated_at = datetime.utcnow()
+    db.commit()
+    return {
+        "company_id": str(c.id),
+        "api_key": raw,  # shown ONCE (store it securely)
+        "instructions": "Use headers: X-Company-Id + X-Api-Key",
+    }
+
+
+@router.post("/companies/{company_id}/contracts")
+def create_contract(company_id: uuid.UUID, payload: ContractCreate, db: Session = Depends(get_db), _admin: str = Depends(require_admin)):
+    c = db.get(EnterpriseCompany, company_id)
+    if not c:
+        raise HTTPException(status_code=404, detail="Company not found")
+
+    contract = EnterpriseContract(
+        company_id=c.id,
+        status=ContractStatus.active,
+        monthly_allowance_runs=payload.monthly_allowance_runs,
+        max_concurrent_jobs=payload.max_concurrent_jobs,
+        monthly_fee_eur=payload.monthly_fee_eur,
+        currency=payload.currency.upper(),
+        start_date=datetime.utcnow(),
+    )
+    db.add(contract)
+    db.commit()
+    db.refresh(contract)
+    return {"contract_id": str(contract.id), "status": contract.status.value}
+
+
+@router.post("/invoices")
+def create_invoice(payload: InvoiceCreate, db: Session = Depends(get_db), _admin: str = Depends(require_admin)):
+    c = db.get(EnterpriseCompany, payload.company_id)
+    if not c:
+        raise HTTPException(status_code=404, detail="Company not found")
+
+    inv_no = f"INV-{datetime.utcnow().strftime('%Y%m%d')}-{secrets.token_hex(4).upper()}"
+    due = datetime.utcnow() + timedelta(days=int(payload.due_days))
+    total = payload.subtotal_eur + payload.tax_eur
+
+    inv = EnterpriseInvoice(
+        company_id=c.id,
+        invoice_number=inv_no,
+        status=InvoiceStatus.issued,
+        subtotal_eur=payload.subtotal_eur,
+        tax_eur=payload.tax_eur,
+        amount_eur=total,
+        issued_at=datetime.utcnow(),
+        due_at=due,
+        notes=payload.notes,
+    )
+    db.add(inv)
+    db.commit()
+    db.refresh(inv)
+    return {"invoice_id": str(inv.id), "invoice_number": inv.invoice_number, "status": inv.status.value, "total_eur": str(inv.total_eur)}
+
+
+
+
+@router.get("/invoices")
+def list_invoices(company: EnterpriseCompany = Depends(require_company), db: Session = Depends(get_db)):
+    rows = (
+        db.query(EnterpriseInvoice)
+        .filter(EnterpriseInvoice.company_id == company.id)
+        .order_by(EnterpriseInvoice.issued_at.desc())
+        .limit(100)
+        .all()
+    )
+    return {
+        "items": [
+            {
+                "invoice_id": str(i.id),
+                "invoice_number": i.invoice_number,
+                "status": i.status.value,
+                "subtotal_eur": str(i.subtotal_eur),
+                "tax_eur": str(i.tax_eur),
+                "total_eur": str(i.total_eur),
+                "issued_at": i.issued_at.isoformat(),
+                "due_at": i.due_at.isoformat(),
+                "paid_at": i.paid_at.isoformat() if i.paid_at else None,
+                "payment_reference": i.payment_reference,
+                "notes": i.notes,
+            }
+            for i in rows
+        ]
+    }
+
+
+@router.get("/invoices/{invoice_id}")
+def get_invoice(invoice_id: uuid.UUID, company: EnterpriseCompany = Depends(require_company), db: Session = Depends(get_db)):
+    inv = db.get(EnterpriseInvoice, invoice_id)
+    if not inv or inv.company_id != company.id:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    return {
+        "invoice_id": str(inv.id),
+        "invoice_number": inv.invoice_number,
+        "status": inv.status.value,
+        "subtotal_eur": str(inv.subtotal_eur),
+        "tax_eur": str(inv.tax_eur),
+        "total_eur": str(inv.total_eur),
+        "issued_at": inv.issued_at.isoformat(),
+        "due_at": inv.due_at.isoformat(),
+        "paid_at": inv.paid_at.isoformat() if inv.paid_at else None,
+        "payment_reference": inv.payment_reference,
+        "notes": inv.notes,
+    }
+
+
+@router.post("/invoices/{invoice_id}/pay")
+def pay_invoice(invoice_id: uuid.UUID, payload: InvoicePay, company: EnterpriseCompany = Depends(require_company), db: Session = Depends(get_db)):
+    inv = db.get(EnterpriseInvoice, invoice_id)
+    if not inv or inv.company_id != company.id:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+
+    if inv.status == InvoiceStatus.paid:
+        return {"status": "already_paid", "invoice_number": inv.invoice_number}
+
+    inv.status = InvoiceStatus.paid
+    inv.paid_at = datetime.utcnow()
+    inv.payment_reference = payload.payment_reference
+    db.commit()
+
+    # Mark linked order(s) as paid
+    orders = db.query(EnterpriseOrder).filter(
+        EnterpriseOrder.company_id == company.id,
+        EnterpriseOrder.invoice_id == inv.id,
+    ).all()
+    for o in orders:
+        o.is_paid = True
+    db.commit()
+
+    return {"status": "paid", "invoice_number": inv.invoice_number, "paid_at": inv.paid_at.isoformat()}
+@router.post("/orders")
+def create_order(payload: OrderCreate, company: EnterpriseCompany = Depends(require_company), db: Session = Depends(get_db)):
+    # Enterprise rule: you can create order anytime, but it will not execute until paid
+    o = EnterpriseOrder(
+        company_id=company.id,
+        description=payload.description,
+        iterations=payload.iterations,
+        is_paid=False,
+    )
+    db.add(o)
+    db.commit()
+    db.refresh(o)
+
+    # Auto-create invoice and link to order (uses payload.amount)
+    inv_no = f"INV-{datetime.utcnow().strftime('%Y%m%d')}-{secrets.token_hex(4).upper()}"
+    due = datetime.utcnow() + timedelta(days=7)
+
+    subtotal = Decimal(payload.amount)
+    tax = Decimal("0.00")
+    total = subtotal + tax
+
+    inv = EnterpriseInvoice(
+        company_id=company.id,
+        invoice_number=inv_no,
+        status=InvoiceStatus.issued,
+        subtotal_eur=subtotal,
+        tax_eur=tax,
+        amount_eur=total,
+        issued_at=datetime.utcnow(),
+        due_at=due,
+        notes=f"Order {o.id} — {payload.description}",
+    )
+    db.add(inv)
+    db.commit()
+    db.refresh(inv)
+
+    o.invoice_id = inv.id
+    db.commit()
+    db.refresh(o)
+
+    return {
+        "order_id": str(o.id),
+        "paid": o.is_paid,
+        "invoice_id": str(inv.id),
+        "invoice_number": inv.invoice_number,
+    }
+
+@router.post("/invoices/{invoice_id}/settle")
+def settle_invoice(invoice_id: uuid.UUID, payload: InvoiceSettle, db: Session = Depends(get_db), _admin: str = Depends(require_admin)):
+    inv = db.get(EnterpriseInvoice, invoice_id)
+    if not inv:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    if inv.status == InvoiceStatus.paid:
+        return {"status": "already_paid", "invoice_number": inv.invoice_number}
+
+    inv.status = InvoiceStatus.paid
+    inv.paid_at = datetime.utcnow()
+    inv.payment_reference = payload.payment_reference
+    db.commit()
+
+    return {"status": "paid", "invoice_number": inv.invoice_number, "paid_at": inv.paid_at.isoformat()}
+
+
+@router.post("/orders/{order_id}/execute")
+def execute_order(order_id: uuid.UUID, company: EnterpriseCompany = Depends(require_company), db: Session = Depends(get_db)):
+    o = db.get(EnterpriseOrder, order_id)
+    if not o or o.company_id != company.id:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    if not o.is_paid:
+        raise HTTPException(status_code=402, detail="Order not paid (settle invoice first)")
+
+    # Ensure job exists
+    job = db.query(EnterpriseJob).filter(EnterpriseJob.order_id == o.id).first()
+    if not job:
+        job = EnterpriseJob(order_id=o.id, status=JobStatus.queued)
+        db.add(job)
+        db.commit()
+        db.refresh(job)
+
+    enqueue_enterprise_job(str(job.id))
+    return {"job_id": str(job.id), "status": job.status.value}
+
+
+@router.get("/jobs")
+def list_jobs(company: EnterpriseCompany = Depends(require_company), db: Session = Depends(get_db)):
+    # list by joining orders
+    jobs = (
+        db.query(EnterpriseJob, EnterpriseOrder)
+        .join(EnterpriseOrder, EnterpriseJob.order_id == EnterpriseOrder.id)
+        .filter(EnterpriseOrder.company_id == company.id)
+        .order_by(
+        EnterpriseJob.started_at.desc().nullslast(),
+        EnterpriseJob.finished_at.desc().nullslast(),
+    )
+        .limit(50)
+        .all()
+    )
+    out = []
+    for j, o in jobs:
+        out.append({
+            "job_id": str(j.id),
+            "order_id": str(o.id),
+            "status": j.status.value,
+            "artifact_path": j.artifact_path,
+            "error": j.error,
+        })
+    return out
+
+
+@router.get("/jobs/{job_id}")
+def get_job(job_id: uuid.UUID, company: EnterpriseCompany = Depends(require_company), db: Session = Depends(get_db)):
+    row = (
+        db.query(EnterpriseJob, EnterpriseOrder)
+        .join(EnterpriseOrder, EnterpriseJob.order_id == EnterpriseOrder.id)
+        .filter(EnterpriseJob.id == job_id, EnterpriseOrder.company_id == company.id)
+        .first()
+    )
+    if not row:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    job, order = row
+    return {
+        "job_id": str(job.id),
+        "order_id": str(order.id),
+        "status": job.status.value,
+        "artifact_available": bool(job.artifact_path) and job.status == JobStatus.done,
+        "artifact_path": job.artifact_path,  # internal path (for debug); clients should use /artifact
+        "error": job.error,
+        "started_at": job.started_at.isoformat() if job.started_at else None,
+        "finished_at": job.finished_at.isoformat() if job.finished_at else None,
+    }
+
+
+@router.get("/jobs/{job_id}/artifact")
+def download_job_artifact(job_id: uuid.UUID, company: EnterpriseCompany = Depends(require_company), db: Session = Depends(get_db)):
+    row = (
+        db.query(EnterpriseJob, EnterpriseOrder)
+        .join(EnterpriseOrder, EnterpriseJob.order_id == EnterpriseOrder.id)
+        .filter(EnterpriseJob.id == job_id, EnterpriseOrder.company_id == company.id)
+        .first()
+    )
+    if not row:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    job, _order = row
+
+    if job.status != JobStatus.done or not job.artifact_path:
+        raise HTTPException(status_code=409, detail="Artifact not ready")
+
+    path = Path(job.artifact_path)
+    if not path.exists() or not path.is_file():
+        raise HTTPException(status_code=404, detail="Artifact file missing")
+
+    # Force download filename
+    filename = path.name
+    return FileResponse(
+        path=str(path),
+        media_type="application/pdf" if path.suffix.lower()==".pdf" else "application/octet-stream",
+        filename=f"EXECUTIVE_REPORT-{job.id}.pdf" if path.suffix.lower()==".pdf" else filename,
+    )
+
+
+@router.get("/jobs/{job_id}/artifact-pack")
+def download_job_artifact_pack(job_id: uuid.UUID, company: EnterpriseCompany = Depends(require_company), db: Session = Depends(get_db)):
+    row = (
+        db.query(EnterpriseJob, EnterpriseOrder)
+        .join(EnterpriseOrder, EnterpriseJob.order_id == EnterpriseOrder.id)
+        .filter(EnterpriseJob.id == job_id, EnterpriseOrder.company_id == company.id)
+        .first()
+    )
+    if not row:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    job, _order = row
+    if job.status != JobStatus.done or not job.artifact_path:
+        raise HTTPException(status_code=409, detail="Artifacts not ready")
+
+    # job.artifact_path points to the main artifact (pdf or txt)
+    artifact = Path(job.artifact_path)
+    if not artifact.exists():
+        raise HTTPException(status_code=404, detail="Artifact missing")
+
+    out_dir = artifact.parent if artifact.is_file() else Path("out/enterprise") / str(job.id)
+    if not out_dir.exists():
+        raise HTTPException(status_code=404, detail="Artifact directory missing")
+
+    files = []
+    for name in ("EXECUTIVE_REPORT.pdf", "manifest.json", "checksums.sha256"):
+        fp = out_dir / name
+        if fp.exists() and fp.is_file():
+            files.append(fp)
+
+    # Always include the main artifact even if older txt job
+    if artifact.is_file() and artifact not in files:
+        files.append(artifact)
+
+    if not files:
+        raise HTTPException(status_code=404, detail="No artifact files found")
+
+    zip_path = out_dir / f"job_artifacts_{job.id}.zip"
+    with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as z:
+        for fp in files:
+            z.write(fp, arcname=fp.name)
+
+    return FileResponse(
+        path=str(zip_path),
+        media_type="application/zip",
+        filename=f"job_artifacts_{job.id}.zip",
+    )
+
+
+@router.get("/invoices/{invoice_id}/pdf")
+def download_invoice_pdf(
+    invoice_id: uuid.UUID,
+    company: EnterpriseCompany = Depends(require_company),
+    db: Session = Depends(get_db),
+):
+    inv = db.get(EnterpriseInvoice, invoice_id)
+    if not inv or inv.company_id != company.id:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+
+    out_dir = Path("out/enterprise/invoices") / str(inv.id)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_pdf = out_dir / "INVOICE.pdf"
+
+    # Schema-safe dataclass build (ignore unknown keys)
+    _allowed = {f.name for f in fields(InvoicePDFData)}
+    _raw = dict(
+        invoice_id=str(inv.id),
+        invoice_number=getattr(inv, "invoice_number", str(inv.id)),
+        company_legal_name=getattr(company, "legal_name", getattr(company, "name", "Company")),
+        company_id=str(company.id),
+        status=getattr(getattr(inv, "status", None), "value", str(getattr(inv, "status", "unknown"))),
+        subtotal_eur=getattr(inv, "subtotal_eur", None),
+        tax_eur=getattr(inv, "tax_eur", None),
+        total_eur=getattr(inv, "total_eur", getattr(inv, "amount_eur", None)),
+        issued_at=getattr(inv, "issued_at", None),
+        due_at=getattr(inv, "due_at", None),
+        paid_at=getattr(inv, "paid_at", None),
+        payment_reference=getattr(inv, "payment_reference", None),
+        notes=getattr(inv, "notes", None),
+    )
+    d = InvoicePDFData(**{k: v for k, v in _raw.items() if k in _allowed})
+
+    render_invoice_pdf(str(out_pdf), d)
+
+    return FileResponse(
+        path=str(out_pdf),
+        media_type="application/pdf",
+        filename=f"INVOICE-{d.invoice_number}.pdf",
+    )
+
+@router.get("/invoices/{invoice_id}/receipt")
+def download_receipt_pdf(
+    invoice_id: uuid.UUID,
+    company: EnterpriseCompany = Depends(require_company),
+    db: Session = Depends(get_db),
+):
+    inv = db.get(EnterpriseInvoice, invoice_id)
+    if not inv or inv.company_id != company.id:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+
+    out_dir = Path("out/enterprise/invoices") / str(inv.id)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_pdf = out_dir / "RECEIPT.pdf"
+
+    # Schema-safe dataclass build (ignore unknown keys)
+    _allowed = {f.name for f in fields(ReceiptPDFData)}
+    _raw = dict(
+        invoice_id=str(inv.id),
+        invoice_number=getattr(inv, "invoice_number", str(inv.id)),
+        company_legal_name=getattr(company, "legal_name", getattr(company, "name", "Company")),
+        company_id=str(company.id),
+        amount_eur=getattr(inv, "total_eur", getattr(inv, "amount_eur", None)),
+        paid_at=getattr(inv, "paid_at", None),
+        payment_reference=getattr(inv, "payment_reference", None),
+    )
+    d = ReceiptPDFData(**{k: v for k, v in _raw.items() if k in _allowed})
+
+    render_receipt_pdf(str(out_pdf), d)
+
+    return FileResponse(
+        path=str(out_pdf),
+        media_type="application/pdf",
+        filename=f"RECEIPT-{d.invoice_number}.pdf",
+    )
+

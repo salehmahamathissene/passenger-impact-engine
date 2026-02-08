@@ -1,0 +1,13 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: pie
+      POSTGRES_USER: pie
+      POSTGRES_PASSWORD: piepass
+    ports:
+      - "55432:5432"
+    volumes:
+      - pie_pg:/var/lib/postgresql/data
+volumes:
+  pie_pg:

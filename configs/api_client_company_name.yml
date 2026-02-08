@@ -1,0 +1,6 @@
+airline:
+  name: Demo Airlines
+  base: LHR
+simulation:
+  iterations: 10000
+  random_seed: 42

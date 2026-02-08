@@ -32,3 +32,23 @@ test_output_ci/
 
 # Local docker/dev
 .dockerignore
+# Outputs
+out*/
+out_api/
+out_ci/
+out_demo/
+out_docker/
+out_old/
+test_output/
+deliverables/
+reports/
+pie_backups/
+
+# Local env
+.env
+.env.*
+__pycache__/
+*.pyc
+*.log
+*.zip
+.DS_Store
