@@ -10,7 +10,7 @@ test:
 	pytest -q
 
 demo:
-	pie simulate --config configs/demo.yml --out out
+	pie run --config configs/demo.yml --out out
 
 clean:
 	rm -rf out

@@ -1,13 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
-OUT="${1:-out_client}"
-CFG="${2:-configs/demo.yml}"
 
-rm -rf "$OUT" && mkdir -p "$OUT"
+CFG="${1:-configs/demo.yml}"
+OUT="${2:-out_client}"
 
-pie simulate --config "$CFG" --out "$OUT" --audit ledger
-pie merge-ledger --out "$OUT"
-pie stats --out "$OUT" --top 50 --by segment,dtype --metric p95 --min-cost 200 --sample-size 2000
-pie dashboard --out "$OUT" --top 50
+rm -rf "$OUT"
+mkdir -p "$OUT"
 
-echo "✅ Client report ready in: $OUT"
+echo "📄 Generating client report using PIE (new CLI)"
+echo "Config: $CFG"
+echo "Out:    $OUT"
+
+pie run --config "$CFG" --out "$OUT"
+
+echo "✅ Done. Files:"
+find "$OUT" -maxdepth 3 -type f || true
