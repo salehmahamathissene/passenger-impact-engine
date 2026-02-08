@@ -12,10 +12,12 @@ docker build -t pie:ci .
 
 echo "2) Running pipeline in container..."
 docker run --rm \
+  --entrypoint bash \
   -v "$PWD/$TEST_DIR:/test_out" \
   pie:ci \
-  bash -lc '
+  -lc '
     set -euo pipefail
+
     echo "=== pie --help ==="
     pie --help || true
 
