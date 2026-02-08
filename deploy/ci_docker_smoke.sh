@@ -7,7 +7,6 @@ TEST_DIR="test_output_ci"
 ROOT_DIR="$(pwd)"
 OUT_HOST="$ROOT_DIR/$TEST_DIR"
 
-# If previous runs created root-owned files, clean them.
 sudo rm -rf "$OUT_HOST"
 mkdir -p "$OUT_HOST"
 
@@ -35,19 +34,8 @@ docker run --rm \
     find /test_out -maxdepth 6 -type f -print || true
 
     echo "=== Verifying output ==="
-    if [[ -f /test_out/dashboard/index.html ]]; then
-      echo "✅ dashboard/index.html exists"
-    else
-      echo "❌ dashboard/index.html missing"
-      exit 1
-    fi
-
-    if [[ -f /test_out/EXECUTIVE_REPORT.pdf ]]; then
-      echo "✅ EXECUTIVE_REPORT.pdf exists"
-    else
-      echo "❌ EXECUTIVE_REPORT.pdf missing"
-      exit 1
-    fi
+    test -f /test_out/dashboard.html
+    test -f /test_out/EXECUTIVE_REPORT.pdf
 
     echo "✅ Smoke test passed"
   '
