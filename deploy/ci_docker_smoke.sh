@@ -34,7 +34,7 @@ docker run --rm \
     find /test_out -maxdepth 6 -type f -print || true
 
     echo "=== Verifying output ==="
-    test -f /test_out/dashboard.html
+    test -f /test_out/dashboard.html || test -f /test_out/dashboard/index.html
     test -f /test_out/EXECUTIVE_REPORT.pdf
 
     echo "✅ Smoke test passed"
