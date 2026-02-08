@@ -7,6 +7,7 @@ TEST_DIR="test_output_ci"
 ROOT_DIR="$(pwd)"
 OUT_HOST="$ROOT_DIR/$TEST_DIR"
 
+# If previous runs created root-owned files, clean them.
 sudo rm -rf "$OUT_HOST"
 mkdir -p "$OUT_HOST"
 
@@ -26,6 +27,7 @@ docker run --rm \
   pie:ci \
   -lc '
     set -euo pipefail
+
     echo "=== Running PIE pipeline ==="
     pie run --mode demo --runs 50 --tickets-per-flight 5 --seed 123 --out /test_out --pdf
 
@@ -33,6 +35,19 @@ docker run --rm \
     find /test_out -maxdepth 6 -type f -print || true
 
     echo "=== Verifying output ==="
-    test -f /test_out/dashboard/index.html || test -f /test_out/EXECUTIVE_REPORT.pdf
+    if [[ -f /test_out/dashboard/index.html ]]; then
+      echo "✅ dashboard/index.html exists"
+    else
+      echo "❌ dashboard/index.html missing"
+      exit 1
+    fi
+
+    if [[ -f /test_out/EXECUTIVE_REPORT.pdf ]]; then
+      echo "✅ EXECUTIVE_REPORT.pdf exists"
+    else
+      echo "❌ EXECUTIVE_REPORT.pdf missing"
+      exit 1
+    fi
+
     echo "✅ Smoke test passed"
   '
