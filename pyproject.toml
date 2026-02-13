@@ -32,3 +32,11 @@ target-version = "py311"
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
 
+[tool.ruff]
+exclude = [
+  "src/pie/api.py",
+  "src/pie/api/**",
+  "src/pie/config.py",
+  "src/pie/db.py",
+  "src/pie/models/**",
+]
