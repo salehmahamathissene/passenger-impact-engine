@@ -2,6 +2,7 @@ name: CI
 
 on:
   push:
+    branches: [ "main" ]
   pull_request:
 
 jobs:
@@ -38,6 +39,7 @@ jobs:
         env:
           MPLCONFIGDIR: /tmp/matplotlib
         run: |
+          set -eux
           rm -rf out
           mkdir -p out
 
@@ -57,7 +59,7 @@ jobs:
             -e MPLCONFIGDIR=/tmp/matplotlib \
             -v "$PWD/out:/out" \
             passenger-impact-engine:ci \
-            stats --out /out
+            stats --out /out --top 5 --by segment,dtype --metric p95 --min-cost 200 --sample-size 500
 
           docker run --rm \
             -e MPLCONFIGDIR=/tmp/matplotlib \
@@ -77,7 +79,7 @@ jobs:
           test -s out/stats.json
           test -s out/stats_groups.csv
           test -s out/stats_top_passengers.csv
-          test -s out/report.pdf
           test -s out/dashboard/index.html
+          test -s out/report.pdf
 
           echo "✅ Docker pipeline produced all expected artifacts"
