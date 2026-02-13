@@ -28,7 +28,6 @@ def simulate(
     out_dir = Path(out)
     _ensure_dir(out_dir)
 
-    # Artifact 1: run.json
     run_payload = {
         "ok": True,
         "command": "simulate",
@@ -39,22 +38,15 @@ def simulate(
     }
     (out_dir / "run.json").write_text(json.dumps(run_payload, indent=2), encoding="utf-8")
 
-    # Artifact 2: ledger_index.json (needed by merge-ledger stage)
     ledger_index = {
         "ok": True,
         "command": "simulate",
         "audit": audit,
         "created_at": _utc_now(),
-        "ledger_files": [
-            # keep it simple; merge-ledger in this repo will just generate entitlements anyway
-            "ledger.csv.gz"
-        ],
+        "ledger_files": ["ledger.csv.gz"],
     }
-    (out_dir / "ledger_index.json").write_text(
-        json.dumps(ledger_index, indent=2), encoding="utf-8"
-    )
+    (out_dir / "ledger_index.json").write_text(json.dumps(ledger_index, indent=2), encoding="utf-8")
 
-    # Optional: create a tiny compressed ledger file (not required by CI, but good hygiene)
     ledger_path = out_dir / "ledger.csv.gz"
     with gzip.open(ledger_path, "wt", encoding="utf-8", newline="") as f:
         w = csv.writer(f)
@@ -72,7 +64,6 @@ def merge_ledger(out: str = typer.Option(..., help="Output directory, e.g. /out"
     out_dir = Path(out)
     _ensure_dir(out_dir)
 
-    # Artifact 3: entitlements.csv.gz
     ent_path = out_dir / "entitlements.csv.gz"
     with gzip.open(ent_path, "wt", encoding="utf-8", newline="") as f:
         w = csv.writer(f)
@@ -95,7 +86,6 @@ def stats(
     out_dir = Path(out)
     _ensure_dir(out_dir)
 
-    # Artifact 4: stats.json
     stats_payload = {
         "ok": True,
         "command": "stats",
@@ -110,7 +100,6 @@ def stats(
     }
     (out_dir / "stats.json").write_text(json.dumps(stats_payload, indent=2), encoding="utf-8")
 
-    # Artifact 5: stats_groups.csv
     groups_path = out_dir / "stats_groups.csv"
     with groups_path.open("w", encoding="utf-8", newline="") as f:
         w = csv.writer(f)
@@ -118,7 +107,6 @@ def stats(
         w.writerow(["ECON_delay", metric, "400000"])
         w.writerow(["BUS_cancel", metric, "900000"])
 
-    # Artifact 6: stats_top_passengers.csv
     top_path = out_dir / "stats_top_passengers.csv"
     with top_path.open("w", encoding="utf-8", newline="") as f:
         w = csv.writer(f)
@@ -140,7 +128,6 @@ def dashboard(
     dash_dir = out_dir / "dashboard"
     _ensure_dir(dash_dir)
 
-    # Artifact 7: dashboard/index.html
     html = f"""<!doctype html>
 <html>
 <head><meta charset="utf-8"><title>PIE Dashboard</title></head>
@@ -154,3 +141,53 @@ def dashboard(
 """
     (dash_dir / "index.html").write_text(html, encoding="utf-8")
     typer.echo(f"✅ wrote {(dash_dir / 'index.html')}")
+
+
+@app.command()
+def report(
+    out: str = typer.Option(..., help="Output directory, e.g. /out"),
+    filename: str = typer.Option("report.pdf", help="PDF filename"),
+):
+    """
+    Generate a client-ready EU261 exposure report PDF.
+    """
+    # Import here so other commands don't require reportlab
+    from reportlab.lib.pagesizes import A4
+    from reportlab.pdfgen import canvas
+
+    out_dir = Path(out)
+    _ensure_dir(out_dir)
+
+    stats_path = out_dir / "stats.json"
+    if not stats_path.exists():
+        raise typer.Exit("❌ stats.json not found. Run `pie stats` first.")
+
+    stats = json.loads(stats_path.read_text(encoding="utf-8"))
+    summary = stats.get("summary", {})
+
+    pdf_path = out_dir / filename
+
+    c = canvas.Canvas(str(pdf_path), pagesize=A4)
+    width, height = A4
+
+    c.setFont("Helvetica-Bold", 18)
+    c.drawString(50, height - 60, "Passenger Impact Engine (PIE)")
+
+    c.setFont("Helvetica", 12)
+    c.drawString(50, height - 90, "EU261 Compensation Exposure Forecast")
+
+    c.setFont("Helvetica-Bold", 14)
+    c.drawString(50, height - 140, "Key Risk Metrics")
+
+    c.setFont("Helvetica", 12)
+    c.drawString(70, height - 170, f"Expected Exposure: €{int(summary.get('expected_eur', 0)):,}")
+    c.drawString(70, height - 195, f"P50 Exposure: €{int(summary.get('p50_eur', 0)):,}")
+    c.drawString(70, height - 220, f"P95 Worst Case: €{int(summary.get('p95_eur', 0)):,}")
+
+    c.setFont("Helvetica-Oblique", 10)
+    c.drawString(50, height - 270, f"Generated at {_utc_now()}")
+
+    c.showPage()
+    c.save()
+
+    typer.echo(f"✅ wrote {pdf_path}")
