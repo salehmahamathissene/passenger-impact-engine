@@ -191,3 +191,5 @@ def report(
     c.save()
 
     typer.echo(f"✅ wrote {pdf_path}")
+if __name__ == "__main__":
+    app()
