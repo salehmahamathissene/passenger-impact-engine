@@ -12,11 +12,7 @@ dependencies = [
   "pandas>=2.2",
   "typer>=0.12",
   "pyyaml>=6.0",
-  "reportlab>=4.0",
 ]
-
-[project.scripts]
-pie = "passenger_impact_engine.cli:app"
 
 [project.optional-dependencies]
 dev = [
@@ -26,15 +22,4 @@ dev = [
 
 pdf = [
   "reportlab>=4.0",
-]
-
-[tool.ruff]
-line-length = 120
-
-exclude = [
-  "src/pie/api.py",
-  "src/pie/api/**",
-  "src/pie/config.py",
-  "src/pie/db.py",
-  "src/pie/models/**",
 ]
