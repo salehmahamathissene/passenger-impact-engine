@@ -1,10 +1,25 @@
 <!doctype html>
 <html>
-<head><meta charset="utf-8"><title>PIE Dashboard</title></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PIE — EU261 Demo (Realistic)</title>
+<style>
+body{font-family:system-ui,Segoe UI,Roboto,Arial;margin:40px;max-width:900px}
+a{color:#1a5cff}
+code{background:#f2f2f2;padding:2px 6px;border-radius:6px}
+</style>
+</head>
 <body>
-  <h1>Passenger Impact Engine — Dashboard</h1>
-  <p>Generated at: 2026-02-13T14:09:35.831252+00:00</p>
-  <p>Top: 5</p>
-  <p>This is a placeholder dashboard to satisfy CI artifact checks.</p>
+<h1>Passenger Impact Engine — EU261 Demo (Realistic)</h1>
+<p>This page contains the latest generated demo artifacts.</p>
+
+<h2>Downloads</h2>
+<ul>
+  <li><a href="./stats.json">stats.json</a> — Expected / P50 / P95</li>
+  <li><a href="./stats_groups.csv">stats_groups.csv</a> — segment × disruption type</li>
+  <li><a href="./stats_top_passengers.csv">stats_top_passengers.csv</a> — top cost passengers</li>
+  <li><a href="./entitlements.csv.gz">entitlements.csv.gz</a> — compressed entitlements output</li>
+</ul>
+
+<p><strong>Run command:</strong> <code>pie simulate ... && pie stats ... && pie dashboard ...</code></p>
 </body>
 </html>
