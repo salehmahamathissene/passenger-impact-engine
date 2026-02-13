@@ -1,3 +1,30 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Lint
+        run: ruff check .
+
+      - name: Test
+        run: pytest -q
+
   docker:
     runs-on: ubuntu-latest
     steps:
@@ -11,46 +38,39 @@
         env:
           MPLCONFIGDIR: /tmp/matplotlib
         run: |
-          set -eux
           rm -rf out
           mkdir -p out
 
-          # 1) simulate (with ledger audit so merge-ledger works)
           docker run --rm \
             -e MPLCONFIGDIR=/tmp/matplotlib \
             -v "$PWD/out:/out" \
             passenger-impact-engine:ci \
             simulate --config configs/demo_eu261_realistic.yml --out /out --audit ledger
 
-          # 2) merge-ledger => entitlements.csv.gz
           docker run --rm \
             -e MPLCONFIGDIR=/tmp/matplotlib \
             -v "$PWD/out:/out" \
             passenger-impact-engine:ci \
             merge-ledger --out /out
 
-          # 3) stats
           docker run --rm \
             -e MPLCONFIGDIR=/tmp/matplotlib \
             -v "$PWD/out:/out" \
             passenger-impact-engine:ci \
-            stats --out /out --top 5 --by segment,dtype --metric p95 --min-cost 200 --sample-size 500
+            stats --out /out
 
-          # 4) report (PDF)
           docker run --rm \
             -e MPLCONFIGDIR=/tmp/matplotlib \
             -v "$PWD/out:/out" \
             passenger-impact-engine:ci \
             report --out /out
 
-          # 5) dashboard
           docker run --rm \
             -e MPLCONFIGDIR=/tmp/matplotlib \
             -v "$PWD/out:/out" \
             passenger-impact-engine:ci \
             dashboard --out /out --top 5
 
-          # ✅ Assertions
           test -s out/run.json
           test -s out/ledger_index.json
           test -s out/entitlements.csv.gz
