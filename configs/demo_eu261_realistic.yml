@@ -1,0 +1,36 @@
+run:
+  seed: 1337
+  iterations: 5000
+
+population:
+  passengers: 186
+  segments:
+    business: 0.18
+    leisure: 0.82
+
+scenario:
+  region: EU261
+  distance_km: 2450
+  carrier_is_eu: true
+  dep_in_eu: true
+  arr_in_eu: true
+
+  # Typical disruption distribution (most are delays, fewer cancels)
+  disruption_mix:
+    delay: 0.85
+    cancel: 0.15
+
+  # “Heavy tail” delay: most are moderate, sometimes huge
+  delay_minutes:
+    mean: 165
+    std: 80
+    min: 0
+    max: 900
+
+costs:
+  meal_cost: 18
+  hotel_cost_per_night: 110
+  ground_transport_cost: 30
+  rebooking_cost_mean: 140
+  rebooking_cost_std: 60
+  refund_rate: 0.12
