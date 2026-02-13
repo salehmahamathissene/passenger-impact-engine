@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pie-api
+  namespace: pie
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: pie-api
+  template:
+    metadata:
+      labels:
+        app: pie-api
+    spec:
+      containers:
+        - name: pie-api
+          image: pie:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8001
+          envFrom:
+            - secretRef:
+                name: pie-secrets
+          livenessProbe:
+            httpGet:
+              path: /live
+              port: 8001
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8001
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"

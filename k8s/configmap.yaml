@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pie-config
+  namespace: pie
+data:
+  ENVIRONMENT: "production"
