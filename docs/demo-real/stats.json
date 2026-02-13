@@ -1,7 +1,7 @@
 {
   "ok": true,
   "command": "stats",
-  "created_at": "2026-02-13T13:02:42.259033+00:00",
+  "created_at": "2026-02-13T14:09:35.271784+00:00",
   "top": 5,
   "by": "segment,dtype",
   "metric": "p95",
