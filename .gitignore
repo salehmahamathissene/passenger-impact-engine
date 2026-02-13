@@ -32,3 +32,6 @@ test_output_ci/
 
 # Local docker/dev
 .dockerignore
+
+# local archives
+*.tar.gz
