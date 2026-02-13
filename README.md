@@ -22,15 +22,25 @@ For a disruption scenario, PIE estimates:
 - P95 worst-case exposure: **€1,050,000**
 - Mitigation scenario savings: **5–8%**
 
-> Replace these numbers with your real demo run once your scenario runner is wired.
+> These are illustrative demo numbers. Replace with your real outputs once the scenario runner is finalized.
 
 ## MVP scope (narrow on purpose)
-PIE MVP = **EU261 Exposure Forecast** for one disruption event.
+PIE MVP = **EU261 Exposure Forecast** for one disruption event.  
 See: `docs/MVP_WORKFLOW.md`
 
 ## Docs
 - Buyer pitch: `docs/BUYER_PITCH.md`
 - MVP workflow: `docs/MVP_WORKFLOW.md`
+- Demo output: `docs/DEMO_OUTPUT.md`
+
+## Environment variables
+PIE reads secrets from environment variables (never committed to git):
+
+- `STRIPE_SECRET_KEY`
+- `STRIPE_PUBLIC_KEY`
+- `STRIPE_WEBHOOK_SECRET` (optional)
+- `DATABASE_URL` (optional)
+- `ADMIN_API_KEY` (optional)
 
 ## Quick start (dev)
 ```bash
