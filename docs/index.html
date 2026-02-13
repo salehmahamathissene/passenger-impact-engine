@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Passenger Impact Engine (PIE) — EU261 Exposure Forecast</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 0; background:#0b1220; color:#e8eefc; }
+    .wrap { max-width: 980px; margin: 0 auto; padding: 48px 20px; }
+    .card { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 14px; padding: 20px; }
+    a { color: #8ab4ff; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .grid { display: grid; grid-template-columns: 1fr; gap: 14px; }
+    @media (min-width: 900px) { .grid { grid-template-columns: 1.2fr 0.8fr; } }
+    .btn { display:inline-block; background:#2b68ff; color:white; padding:12px 16px; border-radius:10px; font-weight:700; }
+    .btn2 { display:inline-block; border:1px solid rgba(255,255,255,0.2); padding:12px 16px; border-radius:10px; font-weight:700; margin-left:8px; }
+    .muted { color: rgba(232,238,252,0.75); }
+    code { background: rgba(255,255,255,0.08); padding: 2px 6px; border-radius: 6px; }
+    ul { margin: 8px 0 0 18px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Passenger Impact Engine (PIE)</h1>
+    <p class="muted">
+      Forecast airline disruption cost exposure (EU261 compensation risk) with Monte Carlo simulation.
+      Output: Expected €, P50/P95 worst-case, top cost drivers, and a dashboard.
+    </p>
+
+    <div class="grid">
+      <div class="card">
+        <h2>See the demo</h2>
+        <p class="muted">Click a live dashboard + downloadable stats outputs.</p>
+        <p>
+          <a class="btn" href="./demo-real/">Open Realistic EU261 Demo Dashboard →</a>
+          <a class="btn2" href="./demo/">Open Simple Demo →</a>
+        </p>
+
+        <h3>What you get (delivery in 48–72h)</h3>
+        <ul>
+          <li>Dashboard (<code>index.html</code>) + charts/tables</li>
+          <li><code>stats.json</code> summary (Expected / P50 / P95)</li>
+          <li><code>stats_groups.csv</code> (segment × disruption type)</li>
+          <li><code>stats_top_passengers.csv</code> (highest-cost passengers)</li>
+          <li>Optional: audit ledger (<code>ledger.csv.gz</code>)</li>
+        </ul>
+
+        <h3>What I need from you (5 minutes)</h3>
+        <ul>
+          <li>Passengers count (or load factor)</li>
+          <li>Route distance (km) + EU carrier? dep/arr in EU?</li>
+          <li>Delay vs cancellation mix</li>
+          <li>Rough delay distribution (avg + std or min/max)</li>
+          <li>Cost assumptions (hotel/meal/rebooking) or I can use defaults</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h2>Order / Contact</h2>
+        <p class="muted">Send one scenario and I’ll return a dashboard + risk numbers.</p>
+
+        <p><strong>Email:</strong> <a href="mailto:salehmahamathisseine@gmail.com">salehmahamathisseine@gmail.com</a></p>
+
+        <h3>Pricing (starter)</h3>
+        <ul>
+          <li><strong>$99</strong> — 1 scenario</li>
+          <li><strong>$199</strong> — 3 scenarios comparison</li>
+          <li><strong>$399</strong> — 5 scenarios + recommendations</li>
+        </ul>
+
+        <p class="muted">
+          After 2–3 paid clients, raise prices.
+        </p>
+
+        <p>
+          <a class="btn" href="https://github.com/salehmahamathissene/passenger-impact-engine" target="_blank" rel="noreferrer">
+            View source on GitHub →
+          </a>
+        </p>
+      </div>
+    </div>
+
+    <p class="muted" style="margin-top:18px">
+      Note: Demo numbers are illustrative. Real outputs depend on your scenario inputs.
+    </p>
+  </div>
+</body>
+</html>

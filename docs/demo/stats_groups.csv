@@ -1,0 +1,3 @@
+group,metric,value_eur
+ECON_delay,p95,400000
+BUS_cancel,p95,900000
