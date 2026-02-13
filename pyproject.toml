@@ -7,14 +7,21 @@ requires-python = ">=3.11"
 license = { text = "MIT" }
 authors = [{ name = "Saleh Mahamat", email = "salehmahamathisseine@gmail.com" }]
 keywords = ["EU261", "airline", "risk", "simulation", "monte-carlo", "compliance", "audit"]
+
 dependencies = [
   "pandas>=2.2",
   "typer>=0.12",
   "pyyaml>=6.0",
 ]
 
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+  "ruff>=0.6",
+]
+
 [tool.ruff]
-# (whatever you already had here, like line-length, select, etc.)
+line-length = 120
 
 exclude = [
   "src/pie/api.py",
