@@ -1,52 +1,92 @@
 # Passenger Impact Engine (PIE)
-**Forecast airline disruption cost exposure (EU261 compensation risk) with Monte Carlo simulation.**
 
-PIE helps airline teams answer:
-> “If Flight X is delayed/cancelled today, what is our expected compensation exposure — and how bad can it get (P95)?”
+Monte Carlo Airline Disruption Risk Simulation Platform
 
-## Who this is for
-- Operations Control Center (OCC) / Disruption Management
-- Risk & Compliance
-- Finance / Revenue Management
-- Customer Experience (rebooking + compensation exposure)
+Passenger Impact Engine (PIE) is a simulation system designed to estimate airline disruption costs and EU261 passenger compensation exposure using Monte Carlo modeling.
 
-## What PIE outputs (operator language)
-For a disruption scenario, PIE estimates:
-- **Expected EU261 compensation exposure (€)**
-- **Percentiles (P50 / P95) worst-case exposure (€)**
-- Payout distribution (risk curve)
-- Scenario comparison (delay vs cancel vs mitigation action)
+The platform simulates thousands of disruption scenarios such as delays, cancellations, and denied boarding to estimate financial risk and operational exposure.
 
-### Example (illustrative)
-- Expected exposure: **€380,000**
-- P95 worst-case exposure: **€1,050,000**
-- Mitigation scenario savings: **5–8%**
+PIE helps airline operations and finance teams answer:
 
-> These are illustrative demo numbers. Replace with your real outputs once the scenario runner is finalized.
+> If Flight X is delayed or cancelled today, what is our expected passenger compensation exposure — and how severe could the worst-case outcome be?
 
-## MVP scope (narrow on purpose)
-PIE MVP = **EU261 Exposure Forecast** for one disruption event.  
-See: `docs/MVP_WORKFLOW.md`
+---
 
-## Docs
-- Buyer pitch: `docs/BUYER_PITCH.md`
-- MVP workflow: `docs/MVP_WORKFLOW.md`
-- Demo output: `docs/DEMO_OUTPUT.md`
+# Problem
 
-## Environment variables
-PIE reads secrets from environment variables (never committed to git):
+Airline disruptions create significant financial risk due to passenger compensation regulations such as **EU261**.
 
-- `STRIPE_SECRET_KEY`
-- `STRIPE_PUBLIC_KEY`
-- `STRIPE_WEBHOOK_SECRET` (optional)
-- `DATABASE_URL` (optional)
-- `ADMIN_API_KEY` (optional)
+Operational teams often lack fast analytical tools to estimate:
 
-## Quick start (dev)
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+- expected compensation exposure
+- worst-case disruption costs
+- mitigation scenario impact
 
-# run API (adjust command to your entrypoint)
-python -m src.pie.main
+Passenger Impact Engine addresses this problem by combining **simulation modeling** with **backend analytics systems**.
+
+---
+
+# Key Features
+
+- Monte Carlo simulation of airline disruption scenarios
+- EU261 passenger compensation exposure forecasting
+- Risk distribution outputs (Expected value, P50, P95)
+- Scenario comparison for mitigation strategies
+- Event-sourced architecture tracking ticket lifecycle
+- FastAPI backend exposing simulation APIs
+- Dockerized environment for reproducible deployment
+- Executive-ready analytical outputs
+
+---
+
+# Example Output
+
+Example simulation result (illustrative):
+
+Expected disruption exposure: €380,000  
+P50 exposure: €420,000  
+P95 worst-case exposure: €1,050,000  
+
+Mitigation scenario savings: 5–8%
+
+These numbers demonstrate how simulation outputs help operations teams evaluate disruption decisions.
+
+---
+
+# Architecture Overview
+
+Passenger Impact Engine uses a modular architecture designed for reproducible simulation and analytical workflows.
+
+Core components:
+
+Client / API Request  
+↓  
+FastAPI Backend  
+↓  
+Simulation Engine (Python Monte Carlo models)  
+↓  
+Event Store / Data Layer  
+↓  
+Risk Analytics Output (reports, dashboards)
+
+Key architectural concepts:
+
+- Monte Carlo simulation engine
+- Event-sourced data model (CQRS-style workflow)
+- API-driven simulation execution
+- Docker-based reproducible environments
+
+---
+
+# Tech Stack
+
+- Python
+- FastAPI
+- PostgreSQL
+- Docker
+- Monte Carlo Simulation
+- Event-driven architecture (CQRS)
+
+---
+
+# Repository Structure
