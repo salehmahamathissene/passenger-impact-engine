@@ -53,40 +53,16 @@ These numbers demonstrate how simulation outputs help operations teams evaluate 
 
 ---
 
-# Architecture Overview
-
-Passenger Impact Engine uses a modular architecture designed for reproducible simulation and analytical workflows.
-
-Core components:
-
-Client / API Request  
-↓  
-FastAPI Backend  
-↓  
-Simulation Engine (Python Monte Carlo models)  
-↓  
-Event Store / Data Layer  
-↓  
-Risk Analytics Output (reports, dashboards)
-
-Key architectural concepts:
-
-- Monte Carlo simulation engine
-- Event-sourced data model (CQRS-style workflow)
-- API-driven simulation execution
-- Docker-based reproducible environments
-
----
-
-# Tech Stack
-
-- Python
-- FastAPI
-- PostgreSQL
-- Docker
-- Monte Carlo Simulation
-- Event-driven architecture (CQRS)
-
----
-
-# Repository Structure
+Client / API Request
+        │
+        ▼
+FastAPI Backend
+        │
+        ▼
+Simulation Engine (Monte Carlo Models)
+        │
+        ▼
+Event Store / Data Layer
+        │
+        ▼
+Risk Analytics Output (Reports & Dashboard)
