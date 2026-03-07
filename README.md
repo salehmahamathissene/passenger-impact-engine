@@ -39,6 +39,15 @@ Passenger Impact Engine addresses this problem by combining **simulation modelin
 
 ---
 
+## Tech Stack
+
+- Python
+- FastAPI
+- PostgreSQL
+- Docker
+- Monte Carlo simulation
+- Event-driven architecture (CQRS)
+
 # Example Output
 
 Example simulation result (illustrative):
