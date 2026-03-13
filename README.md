@@ -48,6 +48,49 @@ Passenger Impact Engine addresses this problem by combining **simulation modelin
 - Monte Carlo simulation
 - Event-driven architecture (CQRS)
 
+  ## System Architecture
+
+The platform follows a modular backend architecture designed for scalable simulation workloads.
+
+Client / API Request
+        │
+        ▼
+FastAPI Backend
+        │
+        ▼
+Monte Carlo Simulation Engine
+        │
+        ▼
+Event Store (PostgreSQL)
+        │
+        ▼
+Risk Analytics Output
+(Dashboard + Reports)
+
+## Quick Start
+
+Clone the repository:
+
+git clone https://github.com/salehmahamathissene/passenger-impact-engine
+
+Run with Docker:
+
+docker compose up --build
+
+Open the dashboard:
+
+http://localhost:8000
+
+Why This Matters
+
+Airline disruptions cost billions of euros annually. 
+Passenger compensation regulations such as EU261 create significant financial exposure.
+
+Passenger Impact Engine allows airlines to simulate disruption scenarios and evaluate 
+operational decisions before they are taken.
+
+The goal is to help operations teams reduce disruption cost and improve operational resilience.
+
 # Example Output
 
 Example simulation result (illustrative):
@@ -75,3 +118,34 @@ Event Store / Data Layer
         │
         ▼
 Risk Analytics Output (Reports & Dashboard)
+
+## Example Scenario
+
+Flight: Paris → Madrid  
+Passengers: 180  
+Delay: 3h 20m  
+
+Under EU261 regulations, passengers may be eligible for €250 compensation.
+
+Simulation result (10,000 scenarios):
+
+Expected exposure: €42,500  
+P50: €45,000  
+P95 worst case: €82,000  
+
+Operational decision comparison:
+
+Delay aircraft swap → exposure €42k  
+Cancel flight → exposure €71k  
+
+Estimated savings from mitigation: 40%
+
+## Roadmap
+
+Planned improvements:
+
+- integration with real flight schedule datasets
+- crew repositioning cost modeling
+- real-time disruption simulation
+- machine learning delay prediction
+- advanced risk visualization dashboard
