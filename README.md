@@ -1,14 +1,12 @@
 # Passenger Impact Engine (PIE)
 
-Monte Carlo Airline Disruption Risk Simulation Platform
+**Decision Intelligence Platform for Airline Disruption Risk**
 
-Passenger Impact Engine (PIE) is a simulation system designed to estimate airline disruption costs and EU261 passenger compensation exposure using Monte Carlo modeling.
+Passenger Impact Engine (PIE) is a simulation-driven decision system designed to help airline operations teams quantify financial risk, evaluate disruption scenarios, and make confidence-aware decisions under uncertainty.
 
-The platform simulates thousands of disruption scenarios such as delays, cancellations, and denied boarding to estimate financial risk and operational exposure.
+Instead of reacting to disruptions, PIE enables teams to simulate thousands of possible outcomes and understand both expected impact and worst-case exposure before decisions are made.
 
-PIE helps airline operations and finance teams answer:
-
-> If Flight X is delayed or cancelled today, what is our expected passenger compensation exposure — and how severe could the worst-case outcome be?
+The platform combines Monte Carlo simulation, uncertainty modeling, and backend analytics to transform operational data into risk-aware recommendations.
 
 ---
 
@@ -149,3 +147,21 @@ Planned improvements:
 - real-time disruption simulation
 - machine learning delay prediction
 - advanced risk visualization dashboard
+
+
+## Why PIE is Different
+
+Most simulation systems assume fixed inputs.
+
+PIE models **uncertainty as a first-class component**:
+
+• Delays are distributions, not constants
+• Passenger impact is probabilistic, not deterministic
+• Decisions are evaluated with confidence levels, not single outputs
+
+This allows PIE to answer not just:
+"What will happen?"
+
+But:
+"How confident are we in what will happen?"
+
