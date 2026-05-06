@@ -6,14 +6,17 @@ RUN apt-get update \
  && apt-get install -y bash \
  && rm -rf /var/lib/apt/lists/*
 
+# 1. Copy everything first so pip can find pyproject.toml/setup.py
 COPY . .
 
-# Install project + pdf extra + matplotlib (needed by pipeline)
-RUN pip install --no-cache-dir -e ".[pdf]" matplotlib
+# 2. Install everything
+RUN pip install --no-cache-dir -r requirements.txt && \
+    pip install --no-cache-dir -e ".[pdf]" matplotlib
 
-# CI uses /out volume
+# 3. CI uses /out volume
 RUN mkdir -p /out
 
-# IMPORTANT: don't rely on console script generation; run module directly
 ENTRYPOINT ["python", "-m", "passenger_impact_engine.cli"]
-CMD ["--help"]
+EXPOSE 10000
+
+CMD ["uvicorn", "ai_gateway:app", "--host", "0.0.0.0", "--port", "10000"]
