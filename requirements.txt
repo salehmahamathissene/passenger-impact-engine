@@ -36,7 +36,6 @@ langgraph-checkpoint==4.0.3
 langgraph-prebuilt==1.0.13
 langgraph-sdk==0.3.14
 langsmith==0.8.1
-llama_cpp_python==0.3.22
 markdown-it-py==4.0.0
 MarkupSafe==3.0.3
 matplotlib==3.10.9
@@ -62,7 +61,6 @@ requests-toolbelt==1.0.0
 rich==15.0.0
 scikit-learn==1.8.0
 scipy==1.17.1
-sentence-transformers==5.4.1
 shellingham==1.5.4
 six==1.17.0
 SQLAlchemy==2.0.49
