@@ -46,7 +46,6 @@ orjson==3.11.8
 ormsgpack==1.12.2
 packaging==26.2
 pandas==3.0.2
--e git+https://github.com/salehmahamathissene/passenger-impact-engine.git@a7191c8ebee92c094db48547d6529d145eed6851#egg=passenger_impact_engine
 pillow==12.2.0
 prompt_toolkit==3.0.52
 psycopg2-binary==2.9.12
